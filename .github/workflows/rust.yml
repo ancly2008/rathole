@@ -18,12 +18,14 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - uses: actions-rs/toolchain@v1
+      # ⚠️ 1. 替换为更现代的 toolchain action
+      - name: Install Rust Stable Toolchain
+        uses: dtolnay/rust-toolchain@stable
         with:
-          profile: minimal
-          toolchain: stable
           components: clippy
-      - uses: Swatinem/rust-cache@v1
+      # ⚠️ 2. 移除旧的缓存 action Swatinem/rust-cache@v1
+      # 依赖于 dtolnay/rust-toolchain 的内置缓存，或后续添加 actions/cache@v4
+      
       - name: Clippy
         run: cargo clippy -- -D warnings
       - name: Setup cargo-hack
@@ -37,7 +39,6 @@ jobs:
     strategy:
       matrix:
         include:
-          # 仅编译 Musl 目标，因为它最适合嵌入式设备
           - os: ubuntu-latest
             target: x86_64-unknown-linux-musl
             exe: rathole
@@ -51,24 +52,40 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       
-      # 1. 安装 cross 交叉编译工具
+      # ⚠️ 1. 替换为更现代的 toolchain action
+      - name: Install Rust Stable Toolchain and Target
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          target: ${{ matrix.target }} 
+          
+      # ⚠️ 2. 移除旧的缓存 action Swatinem/rust-cache@v1
+      # 如果需要 Cargo 缓存，我们用 actions/cache@v4 替换
+      - name: Cache Cargo Dependencies
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+            target
+          key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
+          restore-keys: |
+            ${{ runner.os }}-cargo-
+
+      # 3. 安装 cross 交叉编译工具
       - name: Install cross
         run: cargo install cross
         
-      # 2. 核心编译：禁用所有 Feature，确保不包含 OpenSSL/TLS
+      # 4. 核心编译：禁用所有 Feature (No TLS)
       - name: Build (Release) with cross (No TLS)
-        # ⚠️ 禁用默认 Feature，且不启用任何其他 Feature，以强制编译不含 TLS 的版本
         run: cross build --release --target ${{ matrix.target }} --no-default-features
         
-      # 3. 跳过测试
+      # 5. 跳过测试
       # - name: Run tests
       #   run: cargo test --verbose
       
-      # 4. 确保上传 Release 版本文件 (修改路径!)
+      # 6. 确保上传 Release 版本文件
       - name: Upload Release Artifacts
         uses: actions/upload-artifact@v4
         with:
           name: rathole-no-tls-${{ matrix.target }}
-          # 路径修改为 cross 实际输出的路径
           path: target/${{ matrix.target }}/release/${{ matrix.exe }}
-          
