@@ -69,13 +69,13 @@ jobs:
           restore-keys: |
             ${{ runner.os }}-cargo-
 
-      # 3. 核心修复：修正 Action 路径为 cross-rs/cross-toolchain-action@v1
-      - name: Install cross (using dedicated action)
-        uses: cross-rs/cross-toolchain-action@v1 # <--- 路径已修正
+      # 3. 核心修复：使用绝对路径的 cargo 安装 cross
+      - name: Install cross (Fix Cargo PATH)
+        run: ~/.cargo/bin/cargo install cross # <--- 修正为最稳定的安装方法
         
       # 4. 核心编译：使用 cross
       - name: Build (Release) with cross (No TLS)
-        run: cross build --release --target ${{ matrix.target }} --no-default-features
+        run: ~/.cargo/bin/cross build --release --target ${{ matrix.target }} --no-default-features
         
       # 5. 跳过测试
       # - name: Run tests
