@@ -71,3 +71,4 @@ jobs:
           name: rathole-no-tls-${{ matrix.target }}
           # 路径修改为 cross 实际输出的路径
           path: target/${{ matrix.target }}/release/${{ matrix.exe }}
+          
