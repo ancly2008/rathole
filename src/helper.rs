@@ -1,7 +1,8 @@
 use anyhow::{anyhow, Context, Result};
 use async_http_proxy::{http_connect_tokio, http_connect_tokio_with_basic_auth};
 use backoff::{backoff::Backoff, Notify};
-use socket2::{SockRef, TcpKeepalive};
+// 🌟 修改: 确保导入 SocketOption 和 Level
+use socket2::{SockRef, TcpKeepalive, SocketOption, Level}; 
 use std::{future::Future, net::SocketAddr, time::Duration};
 use tokio::io::{AsyncWrite, AsyncWriteExt};
 use tokio::{
@@ -40,14 +41,15 @@ pub fn try_set_tcp_keepcnt(
     conn: &TcpStream, 
     probes: u32 // TCP_KEEPCNT
 ) -> Result<()> {
-    // SockRef 可以转换为 socket2 库的引用，用于设置 OS 级别的 socket 选项
     let s = SockRef::from(conn);
 
-    // set_tcp_keepcnt 方法由 socket2 库提供
-    // 它在支持的平台上设置 TCP_KEEPCNT (Linux, macOS, BSDs 等)
     if probes > 0 {
         trace!("Set TCP keepcnt {}", probes);
-        s.set_tcp_keepcnt(probes)?;
+
+        // 使用 socket2 的底层 set_opt 方法来设置 TCP_KEEPCNT。
+        // 在 Unix/Linux 上，TCP 选项通常位于 IPPROTO_TCP 级别。
+        // SocketOption::TcpKeepCount 对应于 TCP_KEEPCNT。
+        s.set_opt(Level::Tcp, SocketOption::TcpKeepCount, probes)?;
     }
     
     Ok(())
