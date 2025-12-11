@@ -18,14 +18,15 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      # ⚠️ 1. 替换为更现代的 toolchain action
-      - name: Install Rust Stable Toolchain
-        uses: dtolnay/rust-toolchain@stable
+      
+      # ⚠️ 强制指定一个最新的稳定版 Toolchain (如 1.70)，确保 Cargo 兼容 2024 Edition
+      - name: Install Rust Toolchain (1.70)
+        uses: dtolnay/rust-toolchain@1.70 
         with:
           components: clippy
-      # ⚠️ 2. 移除旧的缓存 action Swatinem/rust-cache@v1
-      # 依赖于 dtolnay/rust-toolchain 的内置缓存，或后续添加 actions/cache@v4
-      
+          
+      # (原有的 Swatinem/rust-cache@v1 已移除)
+          
       - name: Clippy
         run: cargo clippy -- -D warnings
       - name: Setup cargo-hack
@@ -52,14 +53,13 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       
-      # ⚠️ 1. 替换为更现代的 toolchain action
-      - name: Install Rust Stable Toolchain and Target
-        uses: dtolnay/rust-toolchain@stable
+      # ⚠️ 强制指定一个最新的稳定版 Toolchain (1.70) 并安装 Target
+      - name: Install Rust Toolchain (1.70) and Target
+        uses: dtolnay/rust-toolchain@1.70
         with:
           target: ${{ matrix.target }} 
           
-      # ⚠️ 2. 移除旧的缓存 action Swatinem/rust-cache@v1
-      # 如果需要 Cargo 缓存，我们用 actions/cache@v4 替换
+      # 缓存步骤，使用官方 Actions/cache
       - name: Cache Cargo Dependencies
         uses: actions/cache@v4
         with:
@@ -75,17 +75,18 @@ jobs:
       - name: Install cross
         run: cargo install cross
         
-      # 4. 核心编译：禁用所有 Feature (No TLS)
+      # 4. 核心编译：禁用所有 Feature (No TLS)，使用 cross
       - name: Build (Release) with cross (No TLS)
         run: cross build --release --target ${{ matrix.target }} --no-default-features
         
-      # 5. 跳过测试
+      # 5. 跳过测试 (解决测试因证书过期卡住的问题)
       # - name: Run tests
       #   run: cargo test --verbose
       
-      # 6. 确保上传 Release 版本文件
+      # 6. 确保上传 Release 版本文件 (解决文件找不到的问题)
       - name: Upload Release Artifacts
         uses: actions/upload-artifact@v4
         with:
           name: rathole-no-tls-${{ matrix.target }}
+          # 路径指向 cross 的正确输出位置：target/<TRIPLE>/release/
           path: target/${{ matrix.target }}/release/${{ matrix.exe }}
