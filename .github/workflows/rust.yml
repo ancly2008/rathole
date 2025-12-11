@@ -25,7 +25,6 @@ jobs:
         with:
           components: clippy
           
-      # Clippy 和 cargo hack 保持不变
       - name: Clippy
         run: ~/.cargo/bin/cargo clippy -- -D warnings
       - name: Setup cargo-hack
@@ -70,13 +69,12 @@ jobs:
           restore-keys: |
             ${{ runner.os }}-cargo-
 
-      # 3. 核心修复：使用官方 Action 安装 cross
+      # 3. 核心修复：修正 Action 路径为 cross-rs/cross-toolchain-action@v1
       - name: Install cross (using dedicated action)
-        uses: cross-rs/install-action@v2 
+        uses: cross-rs/cross-toolchain-action@v1 # <--- 路径已修正
         
       # 4. 核心编译：使用 cross
       - name: Build (Release) with cross (No TLS)
-        # cross 会被正确安装到 PATH，无需使用绝对路径
         run: cross build --release --target ${{ matrix.target }} --no-default-features
         
       # 5. 跳过测试
