@@ -35,6 +35,25 @@ pub fn try_set_tcp_keepalive(
     Ok(s.set_tcp_keepalive(&keepalive)?)
 }
 
+// 🌟 新增函数: 设置 TCP 探测次数 (TCP_KEEPCNT)
+pub fn try_set_tcp_keepcnt(
+    conn: &TcpStream, 
+    probes: u32 // TCP_KEEPCNT
+) -> Result<()> {
+    // SockRef 可以转换为 socket2 库的引用，用于设置 OS 级别的 socket 选项
+    let s = SockRef::from(conn);
+
+    // set_tcp_keepcnt 方法由 socket2 库提供
+    // 它在支持的平台上设置 TCP_KEEPCNT (Linux, macOS, BSDs 等)
+    if probes > 0 {
+        trace!("Set TCP keepcnt {}", probes);
+        s.set_tcp_keepcnt(probes)?;
+    }
+    
+    Ok(())
+}
+
+
 #[allow(dead_code)]
 pub fn feature_not_compile(feature: &str) -> ! {
     panic!(
@@ -59,7 +78,7 @@ pub async fn to_socket_addr<A: ToSocketAddrs>(addr: A) -> Result<SocketAddr> {
 }
 
 pub fn host_port_pair(s: &str) -> Result<(&str, u16)> {
-    let semi = s.rfind(':').expect("missing semicolon");
+    let semi = s.rfind(':').context("missing semicolon")?;
     Ok((&s[..semi], s[semi + 1..].parse()?))
 }
 
@@ -115,8 +134,8 @@ pub async fn tcp_connect_with_proxy(
     if let Some(url) = proxy {
         let addr = &addr.addr;
         let mut s = TcpStream::connect((
-            url.host_str().expect("proxy url should have host field"),
-            url.port().expect("proxy url should have port field"),
+            url.host_str().context("proxy url should have host field")?,
+            url.port().context("proxy url should have port field")?,
         ))
         .await?;
 
@@ -148,7 +167,7 @@ pub async fn tcp_connect_with_proxy(
                     None => http_connect_tokio(&mut s, host, port).await?,
                 }
             }
-            _ => panic!("unknown proxy scheme"),
+            _ => return Err(anyhow!("unknown proxy scheme")),
         }
         Ok(s)
     } else {
