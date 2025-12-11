@@ -19,20 +19,18 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       
-      # ⚠️ 强制指定一个最新的稳定版 Toolchain (如 1.70)，确保 Cargo 兼容 2024 Edition
+      # ⚠️ 强制指定 Toolchain (1.70)，以保证 Cargo 兼容 2024 Edition
       - name: Install Rust Toolchain (1.70)
         uses: dtolnay/rust-toolchain@1.70 
         with:
           components: clippy
           
-      # (原有的 Swatinem/rust-cache@v1 已移除)
-          
       - name: Clippy
         run: cargo clippy -- -D warnings
       - name: Setup cargo-hack
-        run: cargo install cargo-hack
+        run: ~/.cargo/bin/cargo install cargo-hack  # 确保使用新 cargo 安装
       - name: Check all features
-        run: cargo hack check --feature-powerset --no-dev-deps
+        run: ~/.cargo/bin/cargo hack check --feature-powerset --no-dev-deps # 确保使用新 cargo 检查
 
   build:
     name: Build for ${{ matrix.target }}
@@ -53,13 +51,13 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       
-      # ⚠️ 强制指定一个最新的稳定版 Toolchain (1.70) 并安装 Target
+      # ⚠️ 强制指定 Toolchain (1.70) 并安装 Target
       - name: Install Rust Toolchain (1.70) and Target
         uses: dtolnay/rust-toolchain@1.70
         with:
           target: ${{ matrix.target }} 
           
-      # 缓存步骤，使用官方 Actions/cache
+      # 缓存步骤
       - name: Cache Cargo Dependencies
         uses: actions/cache@v4
         with:
@@ -71,22 +69,21 @@ jobs:
           restore-keys: |
             ${{ runner.os }}-cargo-
 
-      # 3. 安装 cross 交叉编译工具
-      - name: Install cross
-        run: cargo install cross
+      # 3. 核心修复：强制使用绝对路径的 cargo 安装 cross
+      - name: Install cross (Fix Cargo PATH)
+        run: ~/.cargo/bin/cargo install cross
         
-      # 4. 核心编译：禁用所有 Feature (No TLS)，使用 cross
+      # 4. 核心编译：使用 cross
       - name: Build (Release) with cross (No TLS)
-        run: cross build --release --target ${{ matrix.target }} --no-default-features
+        run: ~/.cargo/bin/cross build --release --target ${{ matrix.target }} --no-default-features
         
-      # 5. 跳过测试 (解决测试因证书过期卡住的问题)
+      # 5. 跳过测试
       # - name: Run tests
       #   run: cargo test --verbose
       
-      # 6. 确保上传 Release 版本文件 (解决文件找不到的问题)
+      # 6. 确保上传 Release 版本文件
       - name: Upload Release Artifacts
         uses: actions/upload-artifact@v4
         with:
           name: rathole-no-tls-${{ matrix.target }}
-          # 路径指向 cross 的正确输出位置：target/<TRIPLE>/release/
           path: target/${{ matrix.target }}/release/${{ matrix.exe }}
