@@ -19,7 +19,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       
-      # ⚠️ 强制指定 Toolchain (1.70)，以保证 Cargo 兼容 2024 Edition
+      # ⚠️ 强制指定 Toolchain (1.70)
       - name: Install Rust Toolchain (1.70)
         uses: dtolnay/rust-toolchain@1.70 
         with:
@@ -57,21 +57,15 @@ jobs:
         with:
           target: ${{ matrix.target }} 
           
-      # 缓存步骤
-      - name: Cache Cargo Dependencies
-        uses: actions/cache@v4
-        with:
-          path: |
-            ~/.cargo/registry
-            ~/.cargo/git
-            target
-          key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
-          restore-keys: |
-            ${{ runner.os }}-cargo-
+      # ⚠️ 移除缓存步骤，确保环境纯净
+      # - name: Cache Cargo Dependencies
+      #   uses: actions/cache@v4
+      # ... (已注释)
 
-      # 3. 核心修复：使用绝对路径的 cargo 安装 cross
-      - name: Install cross (Fix Cargo PATH)
-        run: ~/.cargo/bin/cargo install cross # <--- 修正为最稳定的安装方法
+      # 3. 核心修复：强制全新安装 cross
+      - name: Install cross (Fresh Install)
+        # 强制使用最新 cargo 安装 cross，且没有缓存干扰
+        run: ~/.cargo/bin/cargo install --force cross
         
       # 4. 核心编译：使用 cross
       - name: Build (Release) with cross (No TLS)
