@@ -25,12 +25,13 @@ jobs:
         with:
           components: clippy
           
+      # Clippy 和 cargo hack 保持不变
       - name: Clippy
-        run: cargo clippy -- -D warnings
+        run: ~/.cargo/bin/cargo clippy -- -D warnings
       - name: Setup cargo-hack
-        run: ~/.cargo/bin/cargo install cargo-hack  # 确保使用新 cargo 安装
+        run: ~/.cargo/bin/cargo install cargo-hack
       - name: Check all features
-        run: ~/.cargo/bin/cargo hack check --feature-powerset --no-dev-deps # 确保使用新 cargo 检查
+        run: ~/.cargo/bin/cargo hack check --feature-powerset --no-dev-deps
 
   build:
     name: Build for ${{ matrix.target }}
@@ -69,13 +70,14 @@ jobs:
           restore-keys: |
             ${{ runner.os }}-cargo-
 
-      # 3. 核心修复：强制使用绝对路径的 cargo 安装 cross
-      - name: Install cross (Fix Cargo PATH)
-        run: ~/.cargo/bin/cargo install cross
+      # 3. 核心修复：使用官方 Action 安装 cross
+      - name: Install cross (using dedicated action)
+        uses: cross-rs/install-action@v2 
         
       # 4. 核心编译：使用 cross
       - name: Build (Release) with cross (No TLS)
-        run: ~/.cargo/bin/cross build --release --target ${{ matrix.target }} --no-default-features
+        # cross 会被正确安装到 PATH，无需使用绝对路径
+        run: cross build --release --target ${{ matrix.target }} --no-default-features
         
       # 5. 跳过测试
       # - name: Run tests
