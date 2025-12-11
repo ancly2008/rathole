@@ -68,7 +68,7 @@ jobs:
         
       # 4. 核心编译：使用 cross
       - name: Build (Release) with cross (No TLS)
-        run: ~/.cargo/bin/cross build --release --target ${{ matrix.target }} --no-default-features --features "client, server, noise"
+        run: ~/.cargo/bin/cross build --release --target ${{ matrix.target }} --no-default-features --features "client, server, noise, hot-reload"
         
       # 5. 跳过测试
       # - name: Run tests
