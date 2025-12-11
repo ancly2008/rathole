@@ -1,5 +1,6 @@
 use crate::config::{ClientServiceConfig, ServerServiceConfig, TcpConfig, TransportConfig};
-use crate::helper::{to_socket_addr, try_set_tcp_keepalive};
+// 🌟 修改: 引入新的辅助函数 try_set_tcp_keepcnt
+use crate::helper::{to_socket_addr, try_set_tcp_keepalive, try_set_tcp_keepcnt};
 use anyhow::{Context, Result};
 use async_trait::async_trait;
 use std::fmt::{Debug, Display};
@@ -13,6 +14,8 @@ pub const DEFAULT_NODELAY: bool = true;
 
 pub const DEFAULT_KEEPALIVE_SECS: u64 = 20;
 pub const DEFAULT_KEEPALIVE_INTERVAL: u64 = 8;
+// 🌟 新增: 默认的 TCP 探测次数 (例如 3 次)
+pub const DEFAULT_KEEPALIVE_PROBES: u32 = 3;
 
 #[derive(Clone)]
 pub struct AddrMaybeCached {
@@ -101,6 +104,8 @@ struct Keepalive {
     pub keepalive_secs: u64,
     // tcp_keepalive_intvl if the underlying protocol is TCP
     pub keepalive_interval: u64,
+    // 🌟 新增: TCP 探测次数 (TCP_KEEPCNT)
+    pub keepalive_probes: u32,
 }
 
 #[derive(Debug, Clone, Copy)]
@@ -122,8 +127,8 @@ impl SocketOpts {
     /// Socket options for the control channel
     pub fn for_control_channel() -> SocketOpts {
         SocketOpts {
-            nodelay: Some(true),  // Always set nodelay for the control channel
-            ..SocketOpts::none()  // None means do not change. Keepalive is set by TcpTransport
+            nodelay: Some(true), // Always set nodelay for the control channel
+            ..SocketOpts::none() // None means do not change. Keepalive is set by TcpTransport
         }
     }
 }
@@ -135,6 +140,7 @@ impl SocketOpts {
             keepalive: Some(Keepalive {
                 keepalive_secs: cfg.keepalive_secs,
                 keepalive_interval: cfg.keepalive_interval,
+                keepalive_probes: DEFAULT_KEEPALIVE_PROBES, // 🌟 新增: 使用默认探测次数
             }),
         }
     }
@@ -142,6 +148,7 @@ impl SocketOpts {
     pub fn from_client_cfg(cfg: &ClientServiceConfig) -> SocketOpts {
         SocketOpts {
             nodelay: cfg.nodelay,
+            // 🌟 客户端服务的数据通道不设置 keepalive，使用 transport 的默认设置 (这保持不变)
             ..SocketOpts::none()
         }
     }
@@ -158,8 +165,16 @@ impl SocketOpts {
             let keepalive_duration = Duration::from_secs(v.keepalive_secs);
             let keepalive_interval = Duration::from_secs(v.keepalive_interval);
 
+            // 1. 设置 Keepalive Time 和 Interval
             if let Err(e) = try_set_tcp_keepalive(conn, keepalive_duration, keepalive_interval)
-                .with_context(|| "Failed to set keepalive")
+                .with_context(|| "Failed to set keepalive time and interval")
+            {
+                error!("{:#}", e);
+            }
+            
+            // 🌟 2. 新增: 设置 Keepalive Probes (TCP_KEEPCNT)
+            if let Err(e) = try_set_tcp_keepcnt(conn, v.keepalive_probes)
+                .with_context(|| "Failed to set keepalive probes (TCP_KEEPCNT)")
             {
                 error!("{:#}", e);
             }
