@@ -12,8 +12,8 @@ use tracing::{error, trace};
 
 pub const DEFAULT_NODELAY: bool = true;
 
-pub const DEFAULT_KEEPALIVE_SECS: u64 = 20;
-pub const DEFAULT_KEEPALIVE_INTERVAL: u64 = 8;
+pub const DEFAULT_KEEPALIVE_SECS: u64 = 30;
+pub const DEFAULT_KEEPALIVE_INTERVAL: u64 = 5;
 // 🌟 新增: 默认的 TCP 探测次数 (例如 3 次)
 pub const DEFAULT_KEEPALIVE_PROBES: u32 = 3;
 
