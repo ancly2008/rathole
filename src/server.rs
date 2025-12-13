@@ -33,8 +33,8 @@ use crate::transport::WebsocketTransport;
 type ServiceDigest = protocol::Digest; // SHA256 of a service name
 type Nonce = protocol::Digest; // Also called `session_key`
 
-const TCP_POOL_SIZE: usize = 1; // The number of cached connections for TCP servies
-const UDP_POOL_SIZE: usize = 1; // The number of cached connections for UDP services
+const TCP_POOL_SIZE: usize = 0; // The number of cached connections for TCP servies
+const UDP_POOL_SIZE: usize = 0; // The number of cached connections for UDP services
 const CHAN_SIZE: usize = 2048; // The capacity of various chans
 const HANDSHAKE_TIMEOUT: u64 = 5; // Timeout for transport handshake
 
